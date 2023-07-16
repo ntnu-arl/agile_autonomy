@@ -252,8 +252,13 @@ void AgileAutonomy::computeManeuver(const bool only_expert) {
       } else {
         // setting the state machine to kAutopilot here reallows to switch to
         // network later
-        ROS_INFO("Switching to kAutopilot");
-        state_machine_ = StateMachine::kAutopilot;
+        // ROS_INFO("Switching to kAutopilot");
+        // state_machine_ = StateMachine::kAutopilot;
+        
+        // switch directly to kNetwork to call getImages (ORACLE integration)
+        ROS_INFO("Switching to kNetwork");
+        state_machine_ = StateMachine::kNetwork;
+
       }
       for (int i = 0; i < 1; i++) {
         std_msgs::Bool bool_msg;

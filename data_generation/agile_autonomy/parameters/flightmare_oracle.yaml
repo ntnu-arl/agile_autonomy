@@ -16,8 +16,8 @@ unity:
   max_object_angles: [180.0, 180.0, 180.0]  # euler angles in degrees, will sample uniformly between bounds
   pointcloud_resolution: 0.2  # will be used for both above- and below-ground
 camera:
-  fov: 91.0 # horizontal FOV in degrees
-  width: 640
-  height: 480
+  fov: 87.0 # horizontal FOV in degrees
+  width: 480
+  height: 280 # crash if set to 270!!!
   baseline: 0.1
   pitch_angle_deg: 0.0 # camera pitch angle in degrees

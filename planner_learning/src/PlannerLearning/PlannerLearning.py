@@ -30,7 +30,7 @@ class PlanLearning(PlanBase):
             # Eliminate slow-down maneuver, gives ambigous labels.
             self.end_ref_percentage = 0.95
         else:
-            self.end_ref_percentage = 0.8
+            self.end_ref_percentage = 0.95 # original agile_autonomy code uses 80% of the trajectory only
         self.data_pub = rospy.Publisher("/hummingbird/agile_autonomy/start_flying", Bool,
                                         queue_size=1)  # Stop upon some condition
         self.planner_succed_sub = rospy.Subscriber("/test_primitive/completed_planning",
@@ -171,14 +171,14 @@ class PlanLearning(PlanBase):
                          self.odometry.pose.pose.position.y,
                          self.odometry.pose.pose.position.z]
 
-        # Check if crashed into ground or outside a box (check in z, x, y)
-        if (quad_position[0] < self.pc_min[0]) or (quad_position[0] > self.pc_max[0]) or \
-           (quad_position[1] < self.pc_min[1]) or (quad_position[1] > self.pc_max[1]) or \
-           (quad_position[2] < self.pc_min[2]) or (quad_position[2] > self.pc_max[2]):
-            print("Stopping experiment because quadrotor outside allowed range!")
-            print(quad_position)
-            self.publish_stop_recording_msg()
-            return
+        # Check if crashed into ground or outside a box (check in z, x, y) # comment to rely only on the kd-tree collision checking
+        # if (quad_position[0] < self.pc_min[0]) or (quad_position[0] > self.pc_max[0]) or \
+        #    (quad_position[1] < self.pc_min[1]) or (quad_position[1] > self.pc_max[1]) or \
+        #    (quad_position[2] < self.pc_min[2]) or (quad_position[2] > self.pc_max[2]):
+        #     print("Stopping experiment because quadrotor outside allowed range!")
+        #     print(quad_position)
+        #     self.publish_stop_recording_msg()
+        #     return
         if self.reference_progress > 50: # first second used to warm up
             self.update_metrics(quad_position)
 
@@ -208,16 +208,17 @@ class PlanLearning(PlanBase):
             self.metrics['number_crashes'] += 1
             self.crashed = True
             # uncomment if you want to stop after crash
-            # self.publish_stop_recording_msg()
+            self.publish_stop_recording_msg()
         # make sure to not count double crashes
         if self.crashed and closest_distance > 1.5 * self.config.crashed_thr:
             self.crashed = False
 
     def evaluate_dagger_condition(self):
-        if self.reference_progress < 50:
-            # At the beginning always use expert (otherwise gives gazebo problems)
-            print("Starting up!")
-            return False
+        # ALWAYS use the network when evaluating
+        # if self.reference_progress < 50:
+        #     # At the beginning always use expert (otherwise gives gazebo problems)
+        #     print("Starting up!")
+        #     return False
         if self.mode == 'testing':
             return True
 

@@ -1,7 +1,7 @@
 quad_name: 'hummingbird'
 odometry_topic: 'ground_truth/odometry'
 rgb_topic: 'agile_autonomy/unity_rgb'
-depth_topic: 'agile_autonomy/sgm_depth'
+depth_topic: 'agile_autonomy/unity_depth' #'agile_autonomy/sgm_depth'
 log_dir: '/tmp/trash_reactive'
 verbose: False
 use_rgb: False # Use camera images
@@ -27,9 +27,9 @@ test_time:
   input_update_freq: 15 #Hz
   execute_nw_predictions: True
   perform_inference: True # Completely disable network forward passes if False
-  crashed_thr: 0.18
+  crashed_thr: 0.2 # col radius is 0.2m as mentioned in the Science Robotics paper
   accept_thresh: 0.9 # when ratio btw other and best score is larger than this, other trajectory will be sent as well.
-  spacings: [5] # mt, 5,6,7, etc. for forest, 6,7,8, etc. for objects.
+  spacings: [4] # mt, 5,6,7, etc. for forest, 6,7,8, etc. for objects.
   track_global_traj: False # Do not use this at test time!
 inputs:
   position: False
