@@ -11,7 +11,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from nav_msgs.msg import Odometry
 from quadrotor_msgs.msg import TrajectoryPoint
 from quadrotor_msgs.msg import Trajectory
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, Imu
 from std_msgs.msg import Bool
 from std_msgs.msg import Empty
 from scipy.spatial.transform import Rotation as R
@@ -26,6 +26,8 @@ class PlanBase(object):
         self.config = config
         self.odometry = Odometry()
         self.gt_odometry = Odometry()
+        self.imu = Imu()
+        self.robot_acc = np.array([])
         self.maneuver_complete = False
         self.use_network = False
         self.net_initialized = False
@@ -49,6 +51,7 @@ class PlanBase(object):
         self.depth_topic = config.depth_topic
         self.rgb_topic = config.rgb_topic
         self.odometry_topic = config.odometry_topic
+        self.imu_topic = config.imu_topic
         self.learner = PlanLearner(settings=config)
         # Queue Stuff
         self.img_queue = collections.deque([], maxlen=self.config.input_update_freq)
@@ -66,6 +69,12 @@ class PlanBase(object):
                                                   Odometry,
                                                   self.callback_gt_odometry,
                                                   queue_size=1)
+
+        self.ground_truth_imu = rospy.Subscriber("/" + self.quad_name + "/" + self.imu_topic,
+                                                  Imu,
+                                                  self.callback_gt_imu,
+                                                  queue_size=1)
+
         if self.config.use_rgb:
             self.image_sub = rospy.Subscriber("/" + self.quad_name + "/" + self.rgb_topic, Image,
                                               self.callback_image, queue_size=1)
@@ -247,6 +256,19 @@ class PlanBase(object):
 
     def maneuver_finished(self):
         return self.maneuver_complete
+
+    def callback_gt_imu(self, data):
+        self.imu = data
+        R_WB = R.from_quat([self.odometry.pose.pose.orientation.x,
+                            self.odometry.pose.pose.orientation.y,
+                            self.odometry.pose.pose.orientation.z,
+                            self.odometry.pose.pose.orientation.w])
+        linear_acc = self.imu.linear_acceleration
+        linear_acc_np_B = np.array([linear_acc.x, linear_acc.y, linear_acc.z])
+        linear_acc_np_W = R_WB.apply(linear_acc_np_B)
+        self.robot_acc = np.array([-linear_acc_np_W[0], # x,y accel is inverted for some reasons
+                                -linear_acc_np_W[1],
+                                linear_acc_np_W[2] - 9.81])
 
     def callback_gt_odometry(self, data):
         odometry = data

@@ -31,6 +31,7 @@ class Settings:
 
             self.quad_name = settings['quad_name']
             self.odometry_topic = settings['odometry_topic']
+            self.imu_topic = settings['imu_topic']
             self.rgb_topic = settings['rgb_topic']
             self.depth_topic = settings['depth_topic']
             # Input mode

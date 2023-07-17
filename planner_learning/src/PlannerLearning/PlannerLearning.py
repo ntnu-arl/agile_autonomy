@@ -112,12 +112,20 @@ class PlanLearning(PlanBase):
 
     def experiment_report(self):
         metrics_report = super(PlanLearning, self).experiment_report()
+        self.metrics['average_acc'] = self.metrics['average_acc'] / self.metrics['metric_cnt']
+        if self.metrics['metric_cnt'] > 1: 
+            self.metrics['average_jerk'] = self.metrics['average_jerk'] / (self.metrics['metric_cnt'] - 1)
+        else:
+            self.metrics['average_jerk'] = 0.0
         metrics_report.update(copy.deepcopy(self.metrics))
         return metrics_report
 
     def reset_metrics(self):
         self.metrics = {'number_crashes': 0,
                         'travelled_dist': 0,
+                        'average_acc': 0,
+                        'average_jerk': 0,
+                        'metric_cnt': 0,
                         'closest_distance': 1000}
 
     def callback_success_reset(self, data):
@@ -191,6 +199,11 @@ class PlanLearning(PlanBase):
             travelled_dist = current_velocity * 1. / 20.  # frequency of update
             travelled_dist = np.linalg.norm(travelled_dist)  # integrate
             self.metrics['travelled_dist'] += travelled_dist
+            self.metrics['average_acc'] += np.linalg.norm(self.robot_acc)
+            if self.metrics['metric_cnt'] > 0:
+                self.metrics['average_jerk'] += np.linalg.norm(self.robot_acc - self.prev_robot_acc) / 0.05
+            self.metrics['metric_cnt'] += 1
+            self.prev_robot_acc = self.robot_acc
 
         if self.metrics['travelled_dist'] < 5.0:
             # no recording in the first 5 m due to transient

@@ -1,5 +1,6 @@
 quad_name: 'hummingbird'
 odometry_topic: 'ground_truth/odometry'
+imu_topic: 'ground_truth/imu'
 rgb_topic: 'agile_autonomy/unity_rgb'
 depth_topic: 'agile_autonomy/unity_depth' #'agile_autonomy/sgm_depth'
 log_dir: '/tmp/trash_reactive'
@@ -19,7 +20,7 @@ checkpoint:
   resume_training: True
   resume_file: "models/ckpt-50"
 test_time:
-  max_rollouts: 50
+  max_rollouts: 100
   test_folder: "/tmp/test"
   expert_folder: "../data_generation/data/"
   fallback_radius_expert: 0.0 #mt unused at test time

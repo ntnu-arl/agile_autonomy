@@ -138,6 +138,10 @@ class Trainer():
             # Start Experiment
             rollout_idx = 0
             report_buffer = []
+            traveled_distances = []
+            average_acc_list = []
+            average_jerk_list = []
+            collision_labels = []
             while rollout_idx < self.settings.max_rollouts:
                 self.learner.maneuver_complete = False  # Just to be sure
                 unity_start_pos = setup_sim(self.msg_handler, config=self.settings)
@@ -158,6 +162,14 @@ class Trainer():
                     # final logging
                     metrics_experiment = self.learner.experiment_report()
                     report_buffer.append(metrics_experiment)
+                    traveled_distances.append(metrics_experiment['travelled_dist'])
+                    average_acc_list.append(metrics_experiment['average_acc'])
+                    average_jerk_list.append(metrics_experiment['average_jerk'])
+                    if metrics_experiment['number_crashes'] > 0:
+                        collision_labels.append(1) # collision
+                    else:
+                        collision_labels.append(0) # everything else is successful
+
                     print("------- {} Rollout ------------".format(rollout_idx+1))
                     for name, value in metrics_experiment.items():
                         print("{} is {:.3f}".format(name, value))
@@ -178,6 +190,11 @@ class Trainer():
                     # Save latest version of report buffer
                     with open(output_file_buffer, 'w') as fout:
                         json.dump(report_buffer, fout)
+                    # Dump the metrics to the terminal as ORACLE
+                    print('traveled_distances:', traveled_distances)
+                    print('average_acc_list:', average_acc_list)
+                    print('average_jerk_list:', average_jerk_list)
+                    print('collision_labels:', collision_labels)
                 else:
                     # Wait one second to stop recording
                     time.sleep(1)
