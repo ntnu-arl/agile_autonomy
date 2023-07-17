@@ -195,6 +195,10 @@ class AgileAutonomy {
 
   bool only_expert_ = false;
   bool setup_done_ = false;
+
+  // Counter to maintain the same map for several trials
+  int random_map_cnt_ = 0;
+  int map_reset_cnt_;
 };
 
 }  // namespace agile_autonomy

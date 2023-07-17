@@ -192,8 +192,16 @@ void AgileAutonomy::computeManeuver(const bool only_expert) {
   if (success) {
     // create directory
     logging_helper_.createDirectories(data_dir_, &curr_data_dir_);
-    // spawns both trees and objects, depending on the params set
-    flightmare_bridge_->spawnObjects(start_state);
+    
+    if (random_map_cnt_ >= map_reset_cnt_) { // keep the same map for ... times
+      random_map_cnt_ = 0;
+    }
+    if (random_map_cnt_ == 0) {
+      // spawns both trees and objects, depending on the params set
+      flightmare_bridge_->spawnObjects(start_state);
+    }
+    random_map_cnt_++;
+    
     //  save unity point cloud, adapt point cloud size to maneuver
     Eigen::Vector3d max_corner =
         Eigen::Vector3d::Ones() * std::numeric_limits<double>::min();
@@ -811,6 +819,11 @@ bool AgileAutonomy::loadParameters() {
   if (!pnh_.getParam("data_dir", data_dir_)) {
     return false;
   }
+
+  if (!pnh_.getParam("map_reset_cnt", map_reset_cnt_)) {
+    return false;
+  }
+  ROS_INFO_STREAM("map_reset_cnt:" << map_reset_cnt_);  
 
   ROS_INFO("Successfully loaded parameters!");
   return true;

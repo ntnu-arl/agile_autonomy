@@ -88,6 +88,7 @@
             <rosparam file="$(find agile_autonomy)/parameters/mpc_params.yaml"/>
             <rosparam file="$(find state_predictor)/parameters/hummingbird.yaml"/>
             <param name="data_dir" value="$(find agile_autonomy)/../data"/>
+            <param name="map_reset_cnt" value="10"/> <!-- keep the map the same for ... trials, then create another one -->
             <remap from="completed_global_plan" to="/test_primitive/completed_planning"/>
         </node>
     </group>
