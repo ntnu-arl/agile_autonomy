@@ -171,14 +171,14 @@ class PlanLearning(PlanBase):
                          self.odometry.pose.pose.position.y,
                          self.odometry.pose.pose.position.z]
 
-        # Check if crashed into ground or outside a box (check in z, x, y) # comment to rely only on the kd-tree collision checking
-        # if (quad_position[0] < self.pc_min[0]) or (quad_position[0] > self.pc_max[0]) or \
-        #    (quad_position[1] < self.pc_min[1]) or (quad_position[1] > self.pc_max[1]) or \
-        #    (quad_position[2] < self.pc_min[2]) or (quad_position[2] > self.pc_max[2]):
-        #     print("Stopping experiment because quadrotor outside allowed range!")
-        #     print(quad_position)
-        #     self.publish_stop_recording_msg()
-        #     return
+        # Check if crashed into ground or outside a box (check in z, x, y)
+        if (quad_position[0] < self.pc_min[0]) or (quad_position[0] > self.pc_max[0]) or \
+           (quad_position[1] < self.pc_min[1]) or (quad_position[1] > self.pc_max[1]) or \
+           (quad_position[2] < self.pc_min[2]) or (quad_position[2] > self.pc_max[2]):
+            print("Stopping experiment because quadrotor outside allowed range!")
+            print(quad_position)
+            self.publish_stop_recording_msg()
+            return
         if self.reference_progress > 50: # first second used to warm up
             self.update_metrics(quad_position)
 
