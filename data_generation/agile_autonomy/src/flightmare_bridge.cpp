@@ -251,7 +251,7 @@ void FlightmareBridge::generatePointcloud(
   pcd_msg.scene_id = scene_id_;
   pcd_msg.bounding_box_scale =
       std::vector<double>{(max_corner.x() - min_corner.x()) + 20,
-                          (max_corner.y() - min_corner.y()) + 40, // increase bounding box of pcl
+                          (max_corner.y() - min_corner.y()) + 80, // increase bounding box of pcl
                           (max_corner.z() - min_corner.z()) + 10};
   ROS_INFO("Scale pointcloud: [%.2f, %.2f, %.2f]",
            pcd_msg.bounding_box_scale.at(0), pcd_msg.bounding_box_scale.at(1),

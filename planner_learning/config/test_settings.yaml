@@ -28,9 +28,9 @@ test_time:
   input_update_freq: 15 #Hz
   execute_nw_predictions: True
   perform_inference: True # Completely disable network forward passes if False
-  crashed_thr: 0.2 # col radius is 0.2m as mentioned in the Science Robotics paper
+  crashed_thr: 0.18 # col radius is 0.2m as mentioned in the Science Robotics paper
   accept_thresh: 0.9 # when ratio btw other and best score is larger than this, other trajectory will be sent as well.
-  spacings: [4] # mt, 5,6,7, etc. for forest, 6,7,8, etc. for objects.
+  spacings: [4.5] # mt, 5,6,7, etc. for forest, 6,7,8, etc. for objects.
   track_global_traj: False # Do not use this at test time!
 inputs:
   position: False

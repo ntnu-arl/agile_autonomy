@@ -7,7 +7,7 @@ general:
   test_time_max_z: 30.0
   test_time_min_z: 0.2
 maneuver:
-  length_straight: 60.0
+  length_straight: 50.0 #60.0
   maneuver_velocity: 2.5
 trajectory:
   traj_len: 10

@@ -20,6 +20,11 @@ import tensorflow as tf
 
 from .models.plan_learner import PlanLearner
 
+# flags to add velocity noise and depth noise
+USE_ADDITIVE_GAUSSIAN_STATE_NOISE = True
+VEL_NOISE = 0.5
+USE_ADDITIVE_GAUSSIAN_IMAGE_NOISE = True
+IMAGE_NOISE_FACTOR = 0.004
 
 class PlanBase(object):
     def __init__(self, config, mode):
@@ -201,6 +206,11 @@ class PlanBase(object):
         dim = (self.config.img_width, self.config.img_height)
         depth = cv2.resize(depth, dim)
         depth = np.array(depth, dtype=np.float32)
+        # add depth noise
+        if USE_ADDITIVE_GAUSSIAN_IMAGE_NOISE:
+            # quadratic noise: need to scale the depth to meter unit first by x 0.001, then convert back to mm unit by x 1000
+            depth = depth + np.random.normal(0.0, IMAGE_NOISE_FACTOR, np.shape(depth)) * np.square(depth*0.001) * 1000
+            np.clip(depth, 0, 20000, out=depth)
         depth = depth / (80) # normalization factor to put depth in (0,255)
         depth = np.expand_dims(depth, axis=-1)
         depth = np.tile(depth, (1, 1, 3))
@@ -286,6 +296,9 @@ class PlanBase(object):
         v_B = np.array([odometry.twist.twist.linear.x,
                         odometry.twist.twist.linear.y,
                         odometry.twist.twist.linear.z]).reshape((3, 1))
+        # add velocity noise
+        if USE_ADDITIVE_GAUSSIAN_STATE_NOISE:
+            v_B = v_B + np.random.normal(0.0, VEL_NOISE, (3, 1))
         w_B = np.array([odometry.twist.twist.angular.x,
                         odometry.twist.twist.angular.y,
                         odometry.twist.twist.angular.z]).reshape((3, 1))
