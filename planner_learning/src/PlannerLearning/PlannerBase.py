@@ -18,13 +18,27 @@ from scipy.spatial.transform import Rotation as R
 from agile_autonomy_msgs.msg import MultiTrajectory
 import tensorflow as tf
 
+from sensor_msgs.msg import PointCloud2
+import sensor_msgs.msg as sensor_msgs
+import std_msgs.msg as std_msgs
+
 from .models.plan_learner import PlanLearner
 
 # flags to add velocity noise and depth noise
-USE_ADDITIVE_GAUSSIAN_STATE_NOISE = True
+USE_ADDITIVE_GAUSSIAN_STATE_NOISE = False #True
 VEL_NOISE = 0.5
-USE_ADDITIVE_GAUSSIAN_IMAGE_NOISE = True
+USE_ADDITIVE_GAUSSIAN_IMAGE_NOISE = False #True
 IMAGE_NOISE_FACTOR = 0.004
+
+# params to convert depth image to pcl for visualization
+DEPTH_CX = 320.5
+DEPTH_CY = 240.5
+DEPTH_FX = 314.46 # 0.5 * width / tan(0.5 * HFOV)
+DEPTH_FY = 314.46
+R_BC = np.array([[0, 0, 1], \
+                [-1, 0, 0], \
+                [0, -1, 0]]) # ignore small rotation angles!
+t_BC = np.array([[0.0], [0.0], [0.0]])
 
 class PlanBase(object):
     def __init__(self, config, mode):
@@ -49,6 +63,8 @@ class PlanBase(object):
             (self.config.img_height, self.config.img_width, 3))
         self.depth = np.zeros(
             (self.config.img_height, self.config.img_width, 3))
+        self.raw_depth = None
+        self.depth_timestamp = None
         self.n_times_expert = 0
         self.n_times_net = 0.00001
         self.start_time = None
@@ -96,6 +112,10 @@ class PlanBase(object):
                                        self.update_input_queues)
         self.timer_net = rospy.Timer(rospy.Duration(1. / self.config.network_frequency),
                                      self._generate_plan)
+
+        # publish pcl for rviz visualization 
+        self.pcl_publisher = rospy.Publisher("/pcl_flightmare", PointCloud2)
+        self.pcl_pub_cnt = 0
 
     def load_trajectory(self, traj_fname):
         self.reference_initialized = False
@@ -240,6 +260,8 @@ class PlanBase(object):
                 raise NotImplementedError
             if (np.sum(depth) != 0) and (not np.any(np.isnan(depth))):
                 self.depth = self.preprocess_depth(depth)
+                self.raw_depth = depth
+                self.depth_timestamp = data.header.stamp
                 self.last_depth_received = rospy.Time.now()
 
         except CvBridgeError as e:
@@ -395,6 +417,62 @@ class PlanBase(object):
             self.img_queue.append(self.image)
         if self.config.use_depth:
             self.depth_queue.append(self.depth)
+            # publishing pcl for rviz visualization
+            self.pcl_pub_cnt = self.pcl_pub_cnt + 1
+            if self.pcl_pub_cnt == 3:
+                if (self.raw_depth is not None):
+                    self.publish_pcl(self.raw_depth, self.depth_timestamp)
+                self.pcl_pub_cnt = 0
+
+    def publish_pcl(self, di_current, time_stamp = None):
+        pixel_idx = np.indices((480, 640))
+        z = di_current.ravel() * 0.001 # convert to meter units
+        x = (pixel_idx[1].ravel() - DEPTH_CX) * z / DEPTH_FX
+        y = (pixel_idx[0].ravel() - DEPTH_CY) * z / DEPTH_FY
+        valid_idx = np.where((z < 10.0) & (y > -0.0)) # only counts voxels within ... z range
+        z_valid = z[valid_idx]
+        x_valid = x[valid_idx]
+        y_valid = y[valid_idx]
+        p_C = np.vstack((x_valid, y_valid, z_valid))
+        p_B = t_BC + R_BC @ p_C  # convert to body frame: delta/odometry_sensor1
+        #p_W = R_WB_0 @ p_B  + np.expand_dims(p_WB_0, axis=1)
+        pcl_msg = self.create_point_cloud_xyz(p_B.T, 'hummingbird/odometry_sensor1', time_stamp)
+        self.pcl_publisher.publish(pcl_msg)
+
+    def create_point_cloud_xyz(self, points, parent_frame, time_stamp = None):
+        """ Creates a point cloud message.
+        Args:
+            points: Nx3 array of xyz positions (m)
+            parent_frame: frame in which the point cloud is defined
+        Returns:
+            sensor_msgs/PointCloud2 message
+        """
+        ros_dtype = sensor_msgs.PointField.FLOAT32
+        dtype = np.float32
+        itemsize = np.dtype(dtype).itemsize
+
+        data = points.astype(dtype).tobytes()
+
+        fields = [sensor_msgs.PointField(
+            name=n, offset=i*itemsize, datatype=ros_dtype, count=1)
+            for i, n in enumerate(['x', 'y', 'z'])]
+
+        if time_stamp == None:
+            header = std_msgs.Header(frame_id=parent_frame, stamp=rospy.Time.now())
+        else:
+            header = std_msgs.Header(frame_id=parent_frame, stamp=time_stamp)
+
+        return sensor_msgs.PointCloud2(
+            header=header,
+            height=1,
+            width=points.shape[0],
+            is_dense=False,
+            is_bigendian=False,
+            fields=fields,
+            point_step=(itemsize * 3),
+            row_step=(itemsize * 3 * points.shape[0]),
+            data=data
+        )
 
     def adapt_reference(self, goal_dir):
         if self.config.velocity_frame == 'wf':
