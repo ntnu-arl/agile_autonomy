@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="use_sim_time" default="true" />
+    <arg name="gazebo_gui_en" default="false" />
+    <arg name="quad_name" default="hummingbird"/>
+    <arg name="robot_name" default="hummingbird" />
+    <arg name="robot_name_collision_check" default="hummingbird_collision_check" />
+    <arg name="model" value="$(find agile_autonomy)/resources/urdf/mav_generic_odometry_sensor_rgb.gazebo"/>
+    <arg name="world_name" value="$(find agile_autonomy)/resources/worlds/simple.world"/>
+
+    <arg name="custom_models" value="$(find agile_autonomy)/resources"/>
+    <arg name="custom_plugins" value="$(find agile_autonomy)/../pointcloud_gz_plugin/build"/>
+
+    <arg name="x_init" default="-20"/>
+    <arg name="y_init" default="20"/>
+
+    <arg name="use_mpc" default="true"/>
+    <arg name="enable_logging" default="false"/>
+    <arg name="enable_ground_truth" default="true"/>
+    <arg name="enable_command_feedthrough" default="true"/>
+    <arg name="log_file" default="$(arg quad_name)"/>
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="false"/>
+    <arg name="use_unity" default="true"/>
+    <arg name="use_ground_truth" value="true"/>
+    <arg name="verbose" default="false"/>
+    <arg name="debug" default="false"/>
+
+    <param name="/$(arg quad_name)/agile_autonomy/general/real_world_exp" value="false"/>
+    <param name="/$(arg quad_name)/agile_autonomy/general/velocity_estimate_in_world_frame" value="false"/>
+    <param name="/$(arg quad_name)/agile_autonomy/general/process_every_nth_odometry" value="20"/>
+    <!-- hacky parameters to change takeoff -->
+    <param name="/hummingbird/autopilot/optitrack_start_height" value="2.0"/>
+    <param name="/hummingbird/autopilot/optitrack_start_land_timeout" value="20.0"/>
+
+    <!-- ROS Gazebo  -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(arg world_name)" />
+        <arg name="gui" value="$(arg gazebo_gui_en)" />
+        <arg name="use_sim_time" value="$(arg use_sim_time)" />
+        <arg name="paused" value="false" />
+        <arg name="verbose" value="false" />
+    </include>
+
+    <group ns="$(arg robot_name)">
+        <!-- <node name="img_throttler" type="throttle" pkg="topic_tools" args="messages vi_sensor/camera_depth/depth/points 5 vi_sensor/camera_depth/depth/points_throttled" /> -->
+
+        <!-- MAV launch -->
+        <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+        <arg name="mav_name" value="$(arg robot_name)" />
+        <arg name="model" value="$(find rmf_sim)/rotors/urdf/$(arg robot_name).gazebo" />
+        <arg name="enable_ground_truth" value="true" />
+        <arg name="x" value="0.0" />
+        <arg name="y" value="0.0" />
+        <arg name="z" value="1.0" />
+        </include>
+
+        <node name="acc_command_converter" pkg="rotors_control" type="acc_command_converter" output="screen">
+        <remap from="odometry" to="odometry_sensor1/odometry" />
+        <param name="use_vehicle_frame" value="true" /> <!-- goal and acc commands are (not) in vehicle frame -->
+        <param name="use_yaw_stabilize" value="false" />
+        <param name="fixed_height" value="false" />
+        <param name="swap_yaw_rate" value="false" />
+        <!-- <remap from="command/rate_thrust" to="input_acceleration_topic" /> -->
+        <!-- <remap from="command/roll_pitch_yawrate_thrust" to="output_roll_pitch_yawrate_thrust_topic" /> -->
+        <param name="eps_explore" value="0.0"/>
+        <param name="noise_x" value="0.0"/>
+        <param name="noise_y" value="0.0"/>
+        <param name="noise_z" value="0.0"/>
+        <rosparam command="load" file="$(find rmf_sim)/rotors/$(arg robot_name).yaml" />
+        <rosparam command="load" file="$(find rmf_sim)/rotors/pid_position_$(arg robot_name).yaml" />
+        </node>
+
+        <!-- RPYrate Thrust controller  -->
+        <node name="roll_pitch_yawrate_thrust_controller_node" pkg="rotors_control" type="roll_pitch_yawrate_thrust_controller_node">
+        <rosparam command="load" file="$(find rmf_sim)/rotors/roll_pitch_yawrate_thrust_controller_$(arg robot_name).yaml" />
+        <rosparam command="load" file="$(find rmf_sim)/rotors/$(arg robot_name).yaml" />
+        <remap from="odometry" to="odometry_sensor1/odometry" />
+        </node>
+
+    </group>
+
+    <group ns="$(arg quad_name)">
+        <!-- Trajectory Planning -->
+        <node pkg="agile_autonomy" type="agile_autonomy" name="agile_autonomy" output="screen">
+            <rosparam file="$(find agile_autonomy)/parameters/default.yaml"/>
+            <rosparam file="$(find agile_autonomy)/parameters/flightmare_oracle.yaml"/> <!-- TODO: how to change to 10 fps????? -->
+            <rosparam file="$(find agile_autonomy)/parameters/mpc_params.yaml"/>
+            <rosparam file="$(find state_predictor)/parameters/hummingbird.yaml"/>
+            <param name="data_dir" value="$(find agile_autonomy)/../data"/>
+            <param name="map_reset_cnt" value="10"/> <!-- keep the map the same for ... trials, then create another one -->
+            <remap from="completed_global_plan" to="/test_primitive/completed_planning"/>
+        </node>
+    </group>
+
+    <node name="rostopic" pkg="rostopic" type="rostopic" args="pub /hummingbird/goal geometry_msgs/Pose '{position: {x: 0.0, y: 0.0, z: 2.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}' -1" />
+    <!-- <node name="rostopic2" pkg="rostopic" type="rostopic" args="pub /hummingbird_collision_check/goal geometry_msgs/Pose '{position: {x: 0.0, y: -10.0, z: 50.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}' -1" /> -->
+    <param name="robot_description" command="$(find xacro)/xacro $(find rmf_sim)/urdf/rmf.urdf" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+
+
+    <!-- Global Planning -->
+    <!-- <include file="$(find mpl_test_node)/launch/ellipsoid_planner_node/global_planning.launch"/> -->
+
+    <!-- label with 8 parallel threads -->
+    <!-- <include file="$(find traj_sampler)/launch/generate_label_8.launch"/> -->
+
+    <!-- Visualization -->
+    <node pkg="rviz" type="rviz" name="viz_face" args="-d $(find agile_autonomy)/resources/rviz/simulation_rlvae.rviz"/>
+
+    <!-- Flightmare Standalone -->
+    <node name="flight_render" pkg="flightrender" type="flightmare.x86_64" if="$(arg use_unity)"/>
+
+</launch>
