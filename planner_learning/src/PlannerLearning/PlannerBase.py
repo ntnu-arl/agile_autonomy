@@ -21,9 +21,9 @@ import tensorflow as tf
 from .models.plan_learner import PlanLearner
 
 # flags to add velocity noise and depth noise
-USE_ADDITIVE_GAUSSIAN_STATE_NOISE = True
+USE_ADDITIVE_GAUSSIAN_STATE_NOISE = False #True
 VEL_NOISE = 0.5
-USE_ADDITIVE_GAUSSIAN_IMAGE_NOISE = True
+USE_ADDITIVE_GAUSSIAN_IMAGE_NOISE = False #True
 IMAGE_NOISE_FACTOR = 0.004
 
 class PlanBase(object):
