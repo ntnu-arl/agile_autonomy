@@ -59,7 +59,7 @@ catkin config --merge-devel
 catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-fdiagnostics-color
 cd src
 
-git clone git@github.com:uzh-rpg/agile_autonomy.git -b oracle_integrate
+git clone git@github.com:ntnu-arl/agile_autonomy.git -b oracle_integrate
 vcs-import < agile_autonomy/dependencies.yaml
 cd rpg_mpl_ros
 git submodule update --init --recursive
