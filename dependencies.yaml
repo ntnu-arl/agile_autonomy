@@ -51,10 +51,9 @@ repositories:
     type: git
     url: git@github.com:ntnu-arl/rotors_simulator.git
     version: dev/vel_yaw_command_opencv4
-  rmf_sim:
+  lmf_gazebo_models:
     type: git
-    url: git@github.com:ntnu-arl/rmf_sim.git
-    version: deep_collision_predictor 
+    url: git@github.com:ntnu-arl/lmf_gazebo_models.git 
   rpg_mpc:
     type: git
     url: git@github.com:uzh-rpg/rpg_mpc.git
